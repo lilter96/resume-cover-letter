@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generate Documents - Resume Generator</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .step-indicator {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 2rem;
+        }
+        .step {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0 1rem;
+            position: relative;
+        }
+        .step:not(:last-child)::after {
+            content: '';
+            position: absolute;
+            top: 20px;
+            left: 100%;
+            width: 2rem;
+            height: 2px;
+            background: #dee2e6;
+        }
+        .step.completed::after {
+            background: #28a745;
+        }
+        .step.active::after {
+            background: linear-gradient(to right, #007bff, #dee2e6);
+        }
+        .step-number {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+        .step.completed .step-number {
+            background: #28a745;
+            color: white;
+        }
+        .step.active .step-number {
+            background: #007bff;
+            color: white;
+        }
+        .step.inactive .step-number {
+            background: #dee2e6;
+            color: #6c757d;
+        }
+        .vacancy-preview {
+            background: #f8f9fa;
+            border-left: 4px solid #007bff;
+            padding: 1rem;
+            margin: 1rem 0;
+        }
+        .credit-badge {
+            position: absolute;
+            top: -10px;
+            right: -10px;
+            background: #28a745;
+            color: white;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="fas fa-file-alt me-2"></i>
+                Resume Generator
+            </a>
+            <div class="navbar-nav ms-auto">
+                <div class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                        <i class="fas fa-user me-1"></i>
+                        {{ user.name }}
+                        <span class="badge bg-primary ms-1 position-relative">
+                            {{ user.credits }}
+                            <span class="credit-badge">{{ user.credits }}</span>
+                        </span>
+                    </a>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="/dashboard">Dashboard</a></li>
+                        <li><a class="dropdown-item" href="/profile">Profile</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="#" onclick="logout()">Logout</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container py-5">
+        <!-- Header -->
+        <div class="text-center mb-5">
+            <h1 class="fw-bold text-primary">
+                <i class="fas fa-magic me-2"></i>
+                Generate Documents
+            </h1>
+            <p class="text-muted">Create tailored resume and cover letter from any HeadHunter vacancy</p>
+        </div>
+
+        <!-- Credits Warning -->
+        {% if user.credits != "∞" and user.credits < 1 %}
+        <div class="alert alert-warning text-center">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            You have no credits remaining. Please purchase more credits to continue generating documents.
+            <button class="btn btn-outline-warning btn-sm ms-2" disabled>Purchase Credits (Coming Soon)</button>
+        </div>
+        {% endif %}
+
+        <!-- Step Indicator -->
+        <div class="step-indicator">
+            <div class="step" id="step1">
+                <div class="step-number">1</div>
+                <span>Parse Vacancy</span>
+            </div>
+            <div class="step" id="step2">
+                <div class="step-number">2</div>
+                <span>Review Details</span>
+            </div>
+            <div class="step" id="step3">
+                <div class="step-number">3</div>
+                <span>Generate Documents</span>
+            </div>
+        </div>
+
+        <!-- Step 1: URL Input -->
+        <div id="urlStep" class="card shadow-sm mb-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-link me-2"></i>
+                    Step 1: Enter HeadHunter Vacancy URL
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-8">
+                        <label for="vacancyUrl" class="form-label">Vacancy URL *</label>
+                        <input type="url" class="form-control" id="vacancyUrl" 
+                               placeholder="https://hh.ru/vacancy/123456789"
+                               pattern="https://hh\.ru/vacancy/[0-9]+">
+                        <div class="form-text">
+                            <i class="fas fa-info-circle me-1"></i>
+                            Paste the full URL of any HeadHunter vacancy you want to apply for
+                        </div>
+                    </div>
+                    <div class="col-md-4 d-flex align-items-end">
+                        <button class="btn btn-primary w-100" onclick="parseVacancy()" {% if user.credits != "∞" and user.credits < 1 %}disabled{% endif %}>
+                            <i class="fas fa-search me-2"></i>
+                            Parse Vacancy
+                        </button>
+                    </div>
+                </div>
+                
+                <div id="parseProgress" style="display: none;" class="mt-3">
+                    <div class="progress">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                             role="progressbar" style="width: 0%"></div>
+                    </div>
+                    <p class="text-center mt-2">Analyzing vacancy with AI...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 2: Vacancy Preview -->
+        <div id="previewStep" class="card shadow-sm mb-4" style="display: none;">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-eye me-2"></i>
+                    Step 2: Review Vacancy Details
+                </h5>
+            </div>
+            <div class="card-body">
+                <div id="vacancyPreview"></div>
+                <div class="text-end mt-3">
+                    <button class="btn btn-outline-secondary me-2" onclick="resetForm()">
+                        <i class="fas fa-redo me-2"></i>
+                        Parse Another
+                    </button>
+                    <button class="btn btn-success" onclick="showGenerationSettings()" {% if user.credits != "∞" and user.credits < 1 %}disabled{% endif %}>
+                        <i class="fas fa-magic me-2"></i>
+                        Generate Documents
+                        <span id="creditCost" class="badge bg-light text-dark ms-1">1 credit</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 3: Generation Progress -->
+        <div id="generationStep" class="card shadow-sm mb-4" style="display: none;">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-cogs me-2"></i>
+                    Step 3: Generating Your Documents
+                </h5>
+            </div>
+            <div class="card-body text-center">
+                <div class="spinner-border text-primary mb-3" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <h6>AI is crafting your personalized documents...</h6>
+                <p class="text-muted">This may take 30-60 seconds</p>
+                <div class="progress mt-3">
+                    <div id="generationProgress" class="progress-bar progress-bar-striped progress-bar-animated" 
+                         role="progressbar" style="width: 0%"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tips -->
+        <div class="card bg-light">
+            <div class="card-body">
+                <h6><i class="fas fa-lightbulb text-warning me-2"></i>Tips for Best Results</h6>
+                <ul class="mb-0">
+                    <li>Make sure your profile is complete with all relevant information</li>
+                    <li>Use the exact HeadHunter vacancy URL (copy from browser address bar)</li>
+                    <li>Our AI will automatically detect the language and match it in your documents</li>
+                    <li>Generated documents are tailored specifically to the job requirements</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- AI Generation Settings Modal -->
+    <div class="modal fade" id="generationSettingsModal" tabindex="-1" aria-labelledby="generationSettingsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="generationSettingsModalLabel">
+                        <i class="fas fa-sliders-h me-2"></i>
+                        AI Generation Settings
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <!-- Temperature/Creativity -->
+                        <div class="col-md-6 mb-3">
+                            <label for="temperature" class="form-label">
+                                Creativity Level
+                                <i class="fas fa-info-circle" data-bs-toggle="tooltip" title="Higher values make output more creative and varied"></i>
+                            </label>
+                            <input type="range" class="form-range" id="temperature" min="0.3" max="0.9" step="0.1" value="0.5" oninput="updateCost()">
+                            <div class="d-flex justify-content-between">
+                                <small>Conservative (0.3)</small>
+                                <small id="temperatureValue">0.5</small>
+                                <small>Creative (0.9)</small>
+                            </div>
+                        </div>
+
+                        <!-- Length -->
+                        <div class="col-md-6 mb-3">
+                            <label for="length" class="form-label">
+                                Document Length
+                                <i class="fas fa-info-circle" data-bs-toggle="tooltip" title="Choose how detailed your documents should be"></i>
+                            </label>
+                            <select class="form-select" id="length" onchange="updateCost()">
+                                <option value="concise">Concise</option>
+                                <option value="standard" selected>Standard</option>
+                                <option value="detailed">Detailed (+0.5 credits)</option>
+                                <option value="extensive">Extensive (+1.0 credits)</option>
+                            </select>
+                        </div>
+
+                        <!-- Tone -->
+                        <div class="col-md-6 mb-3">
+                            <label for="tone" class="form-label">
+                                Writing Tone
+                                <i class="fas fa-info-circle" data-bs-toggle="tooltip" title="The overall tone and style of your documents"></i>
+                            </label>
+                            <select class="form-select" id="tone">
+                                <option value="professional" selected>Professional</option>
+                                <option value="confident">Confident</option>
+                                <option value="friendly">Friendly</option>
+                                <option value="dynamic">Dynamic</option>
+                                <option value="academic">Academic</option>
+                            </select>
+                        </div>
+
+                        <!-- Focus -->
+                        <div class="col-md-6 mb-3">
+                            <label for="focus" class="form-label">
+                                Primary Focus
+                                <i class="fas fa-info-circle" data-bs-toggle="tooltip" title="What aspect to emphasize most in your documents"></i>
+                            </label>
+                            <select class="form-select" id="focus">
+                                <option value="skills" selected>Technical Skills</option>
+                                <option value="experience">Work Experience</option>
+                                <option value="achievements">Achievements</option>
+                                <option value="education">Education</option>
+                                <option value="leadership">Leadership</option>
+                            </select>
+                        </div>
+
+                        <!-- Format Style -->
+                        <div class="col-md-6 mb-3">
+                            <label for="formatStyle" class="form-label">
+                                Format Style
+                                <i class="fas fa-info-circle" data-bs-toggle="tooltip" title="The visual and structural style of your documents"></i>
+                            </label>
+                            <select class="form-select" id="formatStyle">
+                                <option value="traditional" selected>Traditional</option>
+                                <option value="modern">Modern</option>
+                                <option value="creative">Creative</option>
+                                <option value="technical">Technical</option>
+                                <option value="executive">Executive</option>
+                            </select>
+                        </div>
+
+                        <!-- Industry Adaptation -->
+                        <div class="col-md-6 mb-3">
+                            <label for="industryAdaptation" class="form-label">
+                                Industry Adaptation
+                                <i class="fas fa-info-circle" data-bs-toggle="tooltip" title="Adapt language and terminology for specific industries"></i>
+                            </label>
+                            <select class="form-select" id="industryAdaptation">
+                                <option value="auto" selected>Auto-detect</option>
+                                <option value="technology">Technology</option>
+                                <option value="finance">Finance</option>
+                                <option value="healthcare">Healthcare</option>
+                                <option value="education">Education</option>
+                                <option value="marketing">Marketing</option>
+                                <option value="consulting">Consulting</option>
+                            </select>
+                        </div>
+
+                        <!-- Keyword Density -->
+                        <div class="col-md-6 mb-3">
+                            <label for="keywordDensity" class="form-label">
+                                Keyword Optimization
+                                <i class="fas fa-info-circle" data-bs-toggle="tooltip" title="How heavily to optimize for job-relevant keywords"></i>
+                            </label>
+                            <select class="form-select" id="keywordDensity" onchange="updateCost()">
+                                <option value="light">Light</option>
+                                <option value="moderate" selected>Moderate</option>
+                                <option value="heavy">Heavy (+0.5 credits)</option>
+                            </select>
+                        </div>
+
+                        <!-- Personalization -->
+                        <div class="col-md-6 mb-3">
+                            <label for="personalization" class="form-label">
+                                Personalization Level
+                                <i class="fas fa-info-circle" data-bs-toggle="tooltip" title="How much personal voice and unique elements to include"></i>
+                            </label>
+                            <select class="form-select" id="personalization" onchange="updateCost()">
+                                <option value="minimal">Minimal</option>
+                                <option value="standard" selected>Standard</option>
+                                <option value="high">High (+0.5 credits)</option>
+                            </select>
+                        </div>
+
+                        <!-- Special Instructions -->
+                        <div class="col-12 mb-3">
+                            <label for="specialInstructions" class="form-label">
+                                Special Instructions
+                                <i class="fas fa-info-circle" data-bs-toggle="tooltip" title="Any specific requirements or preferences for your documents"></i>
+                            </label>
+                            <textarea class="form-control" id="specialInstructions" rows="3" placeholder="e.g., Emphasize remote work experience, highlight specific certifications, use certain keywords..."></textarea>
+                        </div>
+                    </div>
+
+                    <!-- Preset Management -->
+                    <div class="row">
+                        <div class="col-12 mb-3">
+                            <h6><i class="fas fa-save me-2"></i>Presets</h6>
+                            <div class="d-flex gap-2">
+                                <select class="form-select" id="presetSelect" style="max-width: 200px;">
+                                    <option value="">Select a preset...</option>
+                                </select>
+                                <button type="button" class="btn btn-outline-primary btn-sm" onclick="loadPreset()">
+                                    <i class="fas fa-download me-1"></i>Load
+                                </button>
+                                <button type="button" class="btn btn-outline-success btn-sm" onclick="savePreset()">
+                                    <i class="fas fa-save me-1"></i>Save
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Cost Display -->
+                    <div class="alert alert-info">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span><i class="fas fa-calculator me-2"></i>Estimated Cost:</span>
+                            <span class="fw-bold fs-5" id="modalCreditCost">1.0 credits</span>
+                        </div>
+                        <small class="text-muted">Higher settings may increase cost but provide better customization</small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="generateDocuments()">
+                        <i class="fas fa-magic me-2"></i>
+                        Generate Documents
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Alert Container -->
+    <div id="alertContainer" class="position-fixed top-0 end-0 p-3" style="z-index: 1050;"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let currentVacancy = null;
+
+        function updateSteps(activeStep) {
+            const steps = ['step1', 'step2', 'step3'];
+            steps.forEach((stepId, index) => {
+                const step = document.getElementById(stepId);
+                step.className = 'step';
+                if (index < activeStep - 1) {
+                    step.classList.add('completed');
+                } else if (index === activeStep - 1) {
+                    step.classList.add('active');
+                } else {
+                    step.classList.add('inactive');
+                }
+            });
+        }
+
+        async function parseVacancy() {
+            const url = document.getElementById('vacancyUrl').value.trim();
+            
+            if (!url) {
+                showAlert('Please enter a vacancy URL', 'warning');
+                return;
+            }
+
+            const urlPattern = /^https:\/\/hh\.ru\/vacancy\/\d+/;
+            if (!urlPattern.test(url)) {
+                showAlert('Please enter a valid HeadHunter vacancy URL', 'warning');
+                return;
+            }
+
+            const progressDiv = document.getElementById('parseProgress');
+            const progressBar = progressDiv.querySelector('.progress-bar');
+            
+            progressDiv.style.display = 'block';
+            
+            let progress = 0;
+            const progressInterval = setInterval(() => {
+                progress += Math.random() * 15;
+                if (progress > 85) progress = 85;
+                progressBar.style.width = progress + '%';
+            }, 200);
+
+            try {
+                const response = await fetch('/api/parse-vacancy', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ url: url })
+                });
+
+                const result = await response.json();
+                
+                clearInterval(progressInterval);
+                progressBar.style.width = '100%';
+
+                if (result.success) {
+                    currentVacancy = result.vacancy;
+                    displayVacancyPreview(result.vacancy);
+                    progressDiv.style.display = 'none';
+                    document.getElementById('previewStep').style.display = 'block';
+                    updateSteps(2);
+                    showAlert('Vacancy parsed successfully!', 'success');
+                } else {
+                    progressDiv.style.display = 'none';
+                    showAlert('Error: ' + result.message, 'danger');
+                }
+            } catch (error) {
+                clearInterval(progressInterval);
+                progressDiv.style.display = 'none';
+                showAlert('Network error. Please try again.', 'danger');
+            }
+        }
+
+        function displayVacancyPreview(vacancy) {
+            const preview = document.getElementById('vacancyPreview');
+            preview.innerHTML = `
+                <div class="vacancy-preview">
+                    <h6 class="text-primary">${vacancy.vacancy_title || 'Vacancy Title'}</h6>
+                    <p class="mb-1"><strong>Company:</strong> ${vacancy.company || 'Company Name'}</p>
+                    <p class="mb-1"><strong>Experience Level:</strong> ${vacancy.experience_level || 'Not specified'}</p>
+                    <p class="mb-1"><strong>Domain:</strong> ${vacancy.domain || 'Not specified'}</p>
+                    ${vacancy.salary ? `<p class="mb-1"><strong>Salary:</strong> ${vacancy.salary}</p>` : ''}
+                    ${vacancy.technologies ? `<p class="mb-1"><strong>Technologies:</strong> ${vacancy.technologies}</p>` : ''}
+                    ${vacancy.skills ? `<p class="mb-0"><strong>Skills:</strong> ${vacancy.skills}</p>` : ''}
+                </div>
+            `;
+        }
+
+        async function generateDocuments() {
+            if (!currentVacancy) {
+                showAlert('Please parse a vacancy first', 'warning');
+                return;
+            }
+
+            // Close modal if open
+            const modal = bootstrap.Modal.getInstance(document.getElementById('generationSettingsModal'));
+            if (modal) {
+                modal.hide();
+            }
+
+            document.getElementById('generationStep').style.display = 'block';
+            updateSteps(3);
+
+            const progressBar = document.getElementById('generationProgress');
+            let progress = 0;
+            const progressInterval = setInterval(() => {
+                progress += Math.random() * 10;
+                if (progress > 90) progress = 90;
+                progressBar.style.width = progress + '%';
+            }, 1000);
+
+            try {
+                const generationSettings = getGenerationSettings();
+                
+                const response = await fetch('/api/generate-documents', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        vacancy_url: currentVacancy.url,
+                        vacancy_data: currentVacancy,
+                        generation_settings: generationSettings
+                    })
+                });
+
+                const result = await response.json();
+                
+                clearInterval(progressInterval);
+                progressBar.style.width = '100%';
+
+                if (result.success) {
+                    showAlert('Documents generated successfully! Redirecting...', 'success');
+                    setTimeout(() => {
+                        window.location.href = `/results?folder=${encodeURIComponent(result.data.folder)}`;
+                    }, 2000);
+                } else {
+                    showAlert('Error: ' + result.message, 'danger');
+                    if (result.message.includes('credits')) {
+                        // Refresh page to update credit display
+                        setTimeout(() => location.reload(), 2000);
+                    }
+                }
+            } catch (error) {
+                clearInterval(progressInterval);
+                showAlert('Network error. Please try again.', 'danger');
+            }
+        }
+
+        function showGenerationSettings() {
+            if (!currentVacancy) {
+                showAlert('Please parse a vacancy first', 'warning');
+                return;
+            }
+            
+            // Initialize tooltips
+            const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+            tooltipTriggerList.map(function (tooltipTriggerEl) {
+                return new bootstrap.Tooltip(tooltipTriggerEl);
+            });
+            
+            // Load presets
+            loadPresetList();
+            
+            // Update cost display
+            updateCost();
+            
+            // Show modal
+            const modal = new bootstrap.Modal(document.getElementById('generationSettingsModal'));
+            modal.show();
+        }
+
+        function updateCost() {
+            let baseCost = 1.0;
+            
+            // Temperature cost
+            const temperature = parseFloat(document.getElementById('temperature').value);
+            document.getElementById('temperatureValue').textContent = temperature;
+            if (temperature >= 0.7) baseCost += 0.5;
+            if (temperature >= 0.9) baseCost += 0.5;
+            
+            // Length cost
+            const length = document.getElementById('length').value;
+            if (length === 'detailed') baseCost += 0.5;
+            else if (length === 'extensive') baseCost += 1.0;
+            
+            // Personalization cost
+            const personalization = document.getElementById('personalization').value;
+            if (personalization === 'high') baseCost += 0.5;
+            
+            // Keyword density cost
+            const keywordDensity = document.getElementById('keywordDensity').value;
+            if (keywordDensity === 'heavy') baseCost += 0.5;
+            
+            // Update displays
+            document.getElementById('modalCreditCost').textContent = baseCost.toFixed(1) + ' credits';
+            document.getElementById('creditCost').textContent = baseCost.toFixed(1) + ' credit' + (baseCost !== 1 ? 's' : '');
+        }
+
+        function getGenerationSettings() {
+            return {
+                temperature: parseFloat(document.getElementById('temperature').value),
+                length: document.getElementById('length').value,
+                tone: document.getElementById('tone').value,
+                focus: document.getElementById('focus').value,
+                format_style: document.getElementById('formatStyle').value,
+                industry_adaptation: document.getElementById('industryAdaptation').value,
+                keyword_density: document.getElementById('keywordDensity').value,
+                personalization: document.getElementById('personalization').value,
+                special_instructions: document.getElementById('specialInstructions').value
+            };
+        }
+
+        function savePreset() {
+            const presetName = prompt('Enter a name for this preset:');
+            if (!presetName) return;
+            
+            const settings = getGenerationSettings();
+            const presets = JSON.parse(localStorage.getItem('generationPresets') || '{}');
+            presets[presetName] = settings;
+            localStorage.setItem('generationPresets', JSON.stringify(presets));
+            
+            loadPresetList();
+            showAlert('Preset saved successfully!', 'success');
+        }
+
+        function loadPreset() {
+            const presetName = document.getElementById('presetSelect').value;
+            if (!presetName) return;
+            
+            const presets = JSON.parse(localStorage.getItem('generationPresets') || '{}');
+            const settings = presets[presetName];
+            
+            if (settings) {
+                document.getElementById('temperature').value = settings.temperature;
+                document.getElementById('length').value = settings.length;
+                document.getElementById('tone').value = settings.tone;
+                document.getElementById('focus').value = settings.focus;
+                document.getElementById('formatStyle').value = settings.format_style;
+                document.getElementById('industryAdaptation').value = settings.industry_adaptation;
+                document.getElementById('keywordDensity').value = settings.keyword_density;
+                document.getElementById('personalization').value = settings.personalization;
+                document.getElementById('specialInstructions').value = settings.special_instructions;
+                
+                updateCost();
+                showAlert('Preset loaded successfully!', 'success');
+            }
+        }
+
+        function loadPresetList() {
+            const presets = JSON.parse(localStorage.getItem('generationPresets') || '{}');
+            const select = document.getElementById('presetSelect');
+            
+            // Clear existing options except the first one
+            select.innerHTML = '<option value="">Select a preset...</option>';
+            
+            // Add preset options
+            Object.keys(presets).forEach(presetName => {
+                const option = document.createElement('option');
+                option.value = presetName;
+                option.textContent = presetName;
+                select.appendChild(option);
+            });
+        }
+
+        function resetForm() {
+            document.getElementById('vacancyUrl').value = '';
+            document.getElementById('previewStep').style.display = 'none';
+            document.getElementById('generationStep').style.display = 'none';
+            currentVacancy = null;
+            updateSteps(1);
+        }
+
+        function showAlert(message, type) {
+            const alertContainer = document.getElementById('alertContainer');
+            const alertId = 'alert-' + Date.now();
+            
+            const alertHTML = `
+                <div id="${alertId}" class="alert alert-${type} alert-dismissible fade show" role="alert">
+                    ${message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            `;
+            
+            alertContainer.insertAdjacentHTML('beforeend', alertHTML);
+            
+            setTimeout(() => {
+                const alertElement = document.getElementById(alertId);
+                if (alertElement) {
+                    const alert = bootstrap.Alert.getOrCreateInstance(alertElement);
+                    alert.close();
+                }
+            }, 5000);
+        }
+
+        async function logout() {
+            try {
+                const response = await fetch('/api/logout', { method: 'POST' });
+                if (response.ok) {
+                    window.location.href = '/';
+                }
+            } catch (error) {
+                console.error('Logout error:', error);
+            }
+        }
+
+        // Initialize
+        updateSteps(1);
+    </script>
+</body>
+</html>

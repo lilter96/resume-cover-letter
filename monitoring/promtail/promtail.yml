@@ -1,0 +1,65 @@
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+
+scrape_configs:
+  # Resume Generator Application Logs
+  - job_name: resume-generator
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: resume-generator
+          __path__: /var/log/resume_generator/*.log
+    pipeline_stages:
+      - json:
+          expressions:
+            timestamp: timestamp
+            level: level
+            message: message
+            user_id: user_id
+            endpoint: endpoint
+            method: method
+            status_code: status_code
+            duration: duration
+            error: error
+      - labels:
+          level:
+          endpoint:
+          method:
+          status_code:
+      - timestamp:
+          source: timestamp
+          format: RFC3339
+
+  # System Logs
+  - job_name: system
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: system
+          __path__: /var/log/host/*.log
+
+  # Docker Container Logs
+  - job_name: docker
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        refresh_interval: 5s
+    relabel_configs:
+      - source_labels: ['__meta_docker_container_name']
+        regex: '/(.*)'
+        target_label: 'container'
+      - source_labels: ['__meta_docker_container_log_stream']
+        target_label: 'stream'
+    pipeline_stages:
+      - docker: {}
+      - labels:
+          container:
+          stream:

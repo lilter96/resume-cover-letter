@@ -1,0 +1,271 @@
+{% extends "base.html" %}
+
+{% block title %}Home - Resume Generator{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        <!-- Hero Section -->
+        <div class="text-center mb-5">
+            <h1 class="display-4 fw-bold text-primary mb-3">
+                <i class="fas fa-robot me-3"></i>
+                AI-Powered Resume Generator
+            </h1>
+            <p class="lead text-muted">
+                Upload your resume, set up your profile, select a vacancy, and generate tailored documents with AI
+            </p>
+        </div>
+
+        <!-- Step Indicator -->
+        <div class="step-indicator mb-5">
+            <div class="step active">
+                <div class="step-number">1</div>
+                <span>Upload Resume</span>
+            </div>
+            <div class="step inactive">
+                <div class="step-number">2</div>
+                <span>Setup Profile</span>
+            </div>
+            <div class="step inactive">
+                <div class="step-number">3</div>
+                <span>Select Vacancy</span>
+            </div>
+            <div class="step inactive">
+                <div class="step-number">4</div>
+                <span>Generate Documents</span>
+            </div>
+        </div>
+
+        <!-- Upload Section -->
+        <div class="card card-hover shadow-sm mb-4">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0">
+                    <i class="fas fa-upload me-2"></i>
+                    Step 1: Upload Your Resume (PDF)
+                </h4>
+            </div>
+            <div class="card-body">
+                <div class="upload-area" id="uploadArea">
+                    <i class="fas fa-cloud-upload-alt fa-3x text-muted mb-3"></i>
+                    <h5>Drag & Drop your PDF resume here</h5>
+                    <p class="text-muted">or click to browse files</p>
+                    <input type="file" id="resumeFile" accept=".pdf" style="display: none;">
+                    <button class="btn btn-outline-primary" onclick="document.getElementById('resumeFile').click()">
+                        <i class="fas fa-folder-open me-2"></i>
+                        Browse Files
+                    </button>
+                </div>
+                
+                <div id="uploadProgress" style="display: none;" class="mt-3">
+                    <div class="progress">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                             role="progressbar" style="width: 0%"></div>
+                    </div>
+                    <p class="text-center mt-2">Uploading and parsing your resume...</p>
+                </div>
+
+                <div id="uploadResult" style="display: none;" class="mt-3">
+                    <div class="alert alert-success">
+                        <i class="fas fa-check-circle me-2"></i>
+                        Resume uploaded and parsed successfully!
+                    </div>
+                    <div class="card">
+                        <div class="card-header">
+                            <h6 class="mb-0">Extracted Information</h6>
+                        </div>
+                        <div class="card-body">
+                            <div id="extractedData"></div>
+                            <div class="mt-3">
+                                <a href="/profile" class="btn btn-primary">
+                                    <i class="fas fa-user me-2"></i>
+                                    Continue to Profile Setup
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Features Section -->
+        <div class="row">
+            <div class="col-md-4 mb-4">
+                <div class="card h-100 card-hover shadow-sm">
+                    <div class="card-body text-center">
+                        <i class="fas fa-brain fa-3x text-primary mb-3"></i>
+                        <h5>AI-Powered Analysis</h5>
+                        <p class="text-muted">Advanced LLM technology analyzes your resume and vacancy requirements</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 mb-4">
+                <div class="card h-100 card-hover shadow-sm">
+                    <div class="card-body text-center">
+                        <i class="fas fa-language fa-3x text-success mb-3"></i>
+                        <h5>Multi-Language Support</h5>
+                        <p class="text-muted">Automatically detects vacancy language and generates matching documents</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 mb-4">
+                <div class="card h-100 card-hover shadow-sm">
+                    <div class="card-body text-center">
+                        <i class="fas fa-file-export fa-3x text-info mb-3"></i>
+                        <h5>Multiple Formats</h5>
+                        <p class="text-muted">Export your documents in various formats for different applications</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Start -->
+        <div class="card bg-light">
+            <div class="card-body">
+                <h5><i class="fas fa-rocket me-2"></i>Quick Start</h5>
+                <p class="mb-2">Don't have a resume to upload? You can:</p>
+                <a href="/profile" class="btn btn-outline-primary me-2">
+                    <i class="fas fa-user-plus me-2"></i>
+                    Create Profile Manually
+                </a>
+                <a href="/vacancies" class="btn btn-outline-secondary">
+                    <i class="fas fa-briefcase me-2"></i>
+                    Browse Vacancies
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="loading" style="display: none;" class="text-center">
+    <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Loading...</span>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const sessionId = "{{ session_id }}";
+const uploadArea = document.getElementById('uploadArea');
+const resumeFile = document.getElementById('resumeFile');
+const uploadProgress = document.getElementById('uploadProgress');
+const uploadResult = document.getElementById('uploadResult');
+
+// Drag and drop functionality
+uploadArea.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    uploadArea.classList.add('dragover');
+});
+
+uploadArea.addEventListener('dragleave', () => {
+    uploadArea.classList.remove('dragover');
+});
+
+uploadArea.addEventListener('drop', (e) => {
+    e.preventDefault();
+    uploadArea.classList.remove('dragover');
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+        handleFileUpload(files[0]);
+    }
+});
+
+uploadArea.addEventListener('click', () => {
+    resumeFile.click();
+});
+
+resumeFile.addEventListener('change', (e) => {
+    if (e.target.files.length > 0) {
+        handleFileUpload(e.target.files[0]);
+    }
+});
+
+async function handleFileUpload(file) {
+    if (!file.name.endsWith('.pdf')) {
+        showAlert('Please select a PDF file', 'danger');
+        return;
+    }
+
+    // Show progress
+    uploadProgress.style.display = 'block';
+    uploadResult.style.display = 'none';
+    
+    // Animate progress bar
+    const progressBar = uploadProgress.querySelector('.progress-bar');
+    let progress = 0;
+    const progressInterval = setInterval(() => {
+        progress += Math.random() * 30;
+        if (progress > 90) progress = 90;
+        progressBar.style.width = progress + '%';
+    }, 200);
+
+    try {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('session_id', sessionId);
+
+        const response = await fetch('/upload-resume', {
+            method: 'POST',
+            body: formData
+        });
+
+        const result = await response.json();
+        
+        clearInterval(progressInterval);
+        progressBar.style.width = '100%';
+        
+        setTimeout(() => {
+            uploadProgress.style.display = 'none';
+            
+            if (result.success) {
+                displayUploadResult(result.parsed_data);
+                showAlert('Resume uploaded and parsed successfully!', 'success');
+            } else {
+                showAlert('Error uploading resume: ' + result.message, 'danger');
+            }
+        }, 500);
+
+    } catch (error) {
+        clearInterval(progressInterval);
+        uploadProgress.style.display = 'none';
+        showAlert('Error uploading resume: ' + error.message, 'danger');
+    }
+}
+
+function displayUploadResult(data) {
+    const extractedData = document.getElementById('extractedData');
+    
+    let html = '<div class="row">';
+    
+    if (data.name) {
+        html += `<div class="col-md-6 mb-2"><strong>Name:</strong> ${data.name}</div>`;
+    }
+    if (data.email) {
+        html += `<div class="col-md-6 mb-2"><strong>Email:</strong> ${data.email}</div>`;
+    }
+    if (data.phone) {
+        html += `<div class="col-md-6 mb-2"><strong>Phone:</strong> ${data.phone}</div>`;
+    }
+    if (data.location) {
+        html += `<div class="col-md-6 mb-2"><strong>Location:</strong> ${data.location}</div>`;
+    }
+    if (data.current_position) {
+        html += `<div class="col-md-6 mb-2"><strong>Position:</strong> ${data.current_position}</div>`;
+    }
+    if (data.experience_years) {
+        html += `<div class="col-md-6 mb-2"><strong>Experience:</strong> ${data.experience_years} years</div>`;
+    }
+    if (data.key_skills && data.key_skills.length > 0) {
+        html += `<div class="col-12 mb-2"><strong>Skills:</strong> ${data.key_skills.join(', ')}</div>`;
+    }
+    if (data.education) {
+        html += `<div class="col-12 mb-2"><strong>Education:</strong> ${data.education}</div>`;
+    }
+    
+    html += '</div>';
+    
+    extractedData.innerHTML = html;
+    uploadResult.style.display = 'block';
+}
+</script>
+{% endblock %}

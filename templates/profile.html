@@ -1,0 +1,284 @@
+{% extends "base.html" %}
+
+{% block title %}Profile Setup - Resume Generator{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <!-- Header -->
+        <div class="text-center mb-4">
+            <h2 class="fw-bold text-primary">
+                <i class="fas fa-user-cog me-2"></i>
+                Setup Your Profile
+            </h2>
+            <p class="text-muted">Configure your personal and professional information</p>
+        </div>
+
+        <!-- Step Indicator -->
+        <div class="step-indicator mb-4">
+            <div class="step completed">
+                <div class="step-number">1</div>
+                <span>Upload Resume</span>
+            </div>
+            <div class="step active">
+                <div class="step-number">2</div>
+                <span>Setup Profile</span>
+            </div>
+            <div class="step inactive">
+                <div class="step-number">3</div>
+                <span>Select Vacancy</span>
+            </div>
+            <div class="step inactive">
+                <div class="step-number">4</div>
+                <span>Generate Documents</span>
+            </div>
+        </div>
+
+        <!-- Profile Form -->
+        <div class="card shadow-sm">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-id-card me-2"></i>
+                    Personal & Professional Information
+                </h5>
+            </div>
+            <div class="card-body">
+                <form id="profileForm">
+                    <input type="hidden" id="sessionId" value="{{ session_id }}">
+                    
+                    <!-- Personal Information -->
+                    <h6 class="text-primary mb-3">
+                        <i class="fas fa-user me-2"></i>
+                        Personal Information
+                    </h6>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="name" class="form-label">Full Name *</label>
+                            <input type="text" class="form-control" id="name" required
+                                   value="{{ resume_data.get('name', '') }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="email" class="form-label">Email Address *</label>
+                            <input type="email" class="form-control" id="email" required
+                                   value="{{ resume_data.get('email', '') }}">
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="phone" class="form-label">Phone Number *</label>
+                            <input type="tel" class="form-control" id="phone" required
+                                   value="{{ resume_data.get('phone', '') }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="location" class="form-label">Location *</label>
+                            <input type="text" class="form-control" id="location" required
+                                   placeholder="City, Country" value="{{ resume_data.get('location', '') }}">
+                        </div>
+                    </div>
+
+                    <!-- Professional Information -->
+                    <h6 class="text-primary mb-3 mt-4">
+                        <i class="fas fa-briefcase me-2"></i>
+                        Professional Information
+                    </h6>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="currentPosition" class="form-label">Current Position *</label>
+                            <input type="text" class="form-control" id="currentPosition" required
+                                   value="{{ resume_data.get('current_position', '') }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="experienceYears" class="form-label">Years of Experience *</label>
+                            <select class="form-select" id="experienceYears" required>
+                                <option value="">Select experience</option>
+                                <option value="0-1">0-1 years</option>
+                                <option value="1-2">1-2 years</option>
+                                <option value="2-3">2-3 years</option>
+                                <option value="3-5">3-5 years</option>
+                                <option value="5-7">5-7 years</option>
+                                <option value="7-10">7-10 years</option>
+                                <option value="10+">10+ years</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="keySkills" class="form-label">Key Skills *</label>
+                        <input type="text" class="form-control" id="keySkills" required
+                               placeholder="python, machine learning, data analysis (comma-separated)"
+                               value="{{ resume_data.get('key_skills', []) | join(', ') }}">
+                        <div class="form-text">Enter your key skills separated by commas</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="education" class="form-label">Education *</label>
+                        <input type="text" class="form-control" id="education" required
+                               placeholder="University, Degree, Year"
+                               value="{{ resume_data.get('education', '') }}">
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="achievements" class="form-label">Key Achievements</label>
+                        <textarea class="form-control" id="achievements" rows="3"
+                                  placeholder="Describe your key professional achievements and accomplishments">{{ resume_data.get('achievements', '') }}</textarea>
+                    </div>
+
+                    <!-- Social Links -->
+                    <h6 class="text-primary mb-3 mt-4">
+                        <i class="fas fa-link me-2"></i>
+                        Professional Links (Optional)
+                    </h6>
+                    <div class="row mb-3">
+                        <div class="col-md-12">
+                            <label for="github" class="form-label">
+                                <i class="fab fa-github text-dark me-1"></i>
+                                GitHub Profile
+                            </label>
+                            <input type="url" class="form-control" id="github"
+                                   placeholder="https://github.com/yourusername">
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="d-flex justify-content-between">
+                        <a href="/" class="btn btn-outline-secondary">
+                            <i class="fas fa-arrow-left me-2"></i>
+                            Back to Upload
+                        </a>
+                        <div>
+                            <button type="button" class="btn btn-outline-primary me-2" onclick="saveProfile(false)">
+                                <i class="fas fa-save me-2"></i>
+                                Save Profile
+                            </button>
+                            <button type="button" class="btn btn-primary" onclick="saveProfile(true)">
+                                <i class="fas fa-arrow-right me-2"></i>
+                                Save & Continue
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Tips -->
+        <div class="card bg-light mt-4">
+            <div class="card-body">
+                <h6><i class="fas fa-lightbulb text-warning me-2"></i>Tips for Better Results</h6>
+                <ul class="mb-0">
+                    <li>Be specific with your skills - include both technical and soft skills</li>
+                    <li>Use keywords relevant to your target industry</li>
+                    <li>Include your GitHub profile to showcase your projects</li>
+                    <li>Quantify your achievements with numbers when possible</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="loading" style="display: none;" class="text-center">
+    <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Loading...</span>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Pre-fill experience years if available
+const resumeData = {{ resume_data | tojson }};
+if (resumeData.experience_years) {
+    const experienceSelect = document.getElementById('experienceYears');
+    const years = resumeData.experience_years;
+    
+    // Try to match the experience years to our options
+    if (years.includes('0') || years.includes('1')) {
+        experienceSelect.value = '0-1';
+    } else if (years.includes('2')) {
+        experienceSelect.value = '1-2';
+    } else if (years.includes('3')) {
+        experienceSelect.value = '2-3';
+    } else if (years.includes('5')) {
+        experienceSelect.value = '3-5';
+    } else if (years.includes('7')) {
+        experienceSelect.value = '5-7';
+    } else if (years.includes('10')) {
+        experienceSelect.value = '7-10';
+    } else {
+        experienceSelect.value = '10+';
+    }
+}
+
+async function saveProfile(continueToNext = false) {
+    const form = document.getElementById('profileForm');
+    const sessionId = document.getElementById('sessionId').value;
+    
+    // Validate required fields
+    if (!form.checkValidity()) {
+        form.reportValidity();
+        return;
+    }
+
+    // Collect form data
+    const profileData = {
+        name: document.getElementById('name').value,
+        email: document.getElementById('email').value,
+        phone: document.getElementById('phone').value,
+        location: document.getElementById('location').value,
+        experience_years: document.getElementById('experienceYears').value,
+        current_position: document.getElementById('currentPosition').value,
+        key_skills: document.getElementById('keySkills').value.split(',').map(s => s.trim()).filter(s => s),
+        education: document.getElementById('education').value,
+        achievements: document.getElementById('achievements').value,
+        github: document.getElementById('github').value
+    };
+
+    showLoading(true);
+
+    try {
+        const formData = new FormData();
+        formData.append('session_id', sessionId);
+        formData.append('profile', JSON.stringify(profileData));
+
+        const response = await fetch('/save-profile', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                ...profileData,
+                session_id: sessionId
+            })
+        });
+
+        const result = await response.json();
+        
+        if (result.success) {
+            showAlert('Profile saved successfully!', 'success');
+            
+            if (continueToNext) {
+                setTimeout(() => {
+                    window.location.href = '/vacancies';
+                }, 1000);
+            }
+        } else {
+            showAlert('Error saving profile: ' + result.message, 'danger');
+        }
+
+    } catch (error) {
+        showAlert('Error saving profile: ' + error.message, 'danger');
+    } finally {
+        showLoading(false);
+    }
+}
+
+// Auto-save functionality
+let autoSaveTimeout;
+document.getElementById('profileForm').addEventListener('input', () => {
+    clearTimeout(autoSaveTimeout);
+    autoSaveTimeout = setTimeout(() => {
+        saveProfile(false);
+    }, 2000); // Auto-save after 2 seconds of inactivity
+});
+</script>
+{% endblock %}

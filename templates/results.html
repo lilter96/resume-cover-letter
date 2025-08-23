@@ -1,0 +1,207 @@
+{% extends "base.html" %}
+
+{% block title %}Generated Documents - Resume Generator{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        <!-- Header -->
+        <div class="text-center mb-4">
+            <h2 class="fw-bold text-success">
+                <i class="fas fa-check-circle me-2"></i>
+                Documents Generated Successfully!
+            </h2>
+            <p class="text-muted">Your tailored resume and cover letter are ready for download</p>
+        </div>
+
+        <!-- Step Indicator -->
+        <div class="step-indicator mb-4">
+            <div class="step completed">
+                <div class="step-number">1</div>
+                <span>Upload Resume</span>
+            </div>
+            <div class="step completed">
+                <div class="step-number">2</div>
+                <span>Setup Profile</span>
+            </div>
+            <div class="step completed">
+                <div class="step-number">3</div>
+                <span>Select Vacancy</span>
+            </div>
+            <div class="step completed">
+                <div class="step-number">4</div>
+                <span>Generate Documents</span>
+            </div>
+        </div>
+
+        <!-- Vacancy Information -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-briefcase me-2"></i>
+                    Vacancy Information
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-8">
+                        <h6 class="fw-bold">{{ vacancy_info.vacancy_title }}</h6>
+                        <p class="text-muted mb-1">
+                            <i class="fas fa-building me-1"></i>
+                            {{ vacancy_info.company }}
+                        </p>
+                        {% if vacancy_info.salary %}
+                        <p class="text-muted mb-1">
+                            <i class="fas fa-money-bill-wave me-1"></i>
+                            {{ vacancy_info.salary }}
+                        </p>
+                        {% endif %}
+                        <p class="text-muted mb-0">
+                            <i class="fas fa-calendar me-1"></i>
+                            Generated: {{ vacancy_info.generated_at[:19] | replace('T', ' ') }}
+                        </p>
+                    </div>
+                    <div class="col-md-4 text-end">
+                        {% if vacancy_info.url %}
+                        <a href="{{ vacancy_info.url }}" target="_blank" class="btn btn-outline-primary">
+                            <i class="fas fa-external-link-alt me-2"></i>
+                            View Original
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Generated Documents -->
+        <div class="row">
+            <!-- Resume -->
+            <div class="col-md-6 mb-4">
+                <div class="card shadow-sm h-100">
+                    <div class="card-header bg-success text-white">
+                        <h5 class="mb-0">
+                            <i class="fas fa-file-alt me-2"></i>
+                            Resume
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="document-preview mb-3">
+                            <textarea class="form-control" rows="10" readonly>{{ resume_text[:500] }}{% if resume_text|length > 500 %}...{% endif %}</textarea>
+                        </div>
+                        <div class="d-grid gap-2">
+                            <a href="/download/{{ folder_name }}/resume.txt" class="btn btn-success">
+                                <i class="fas fa-download me-2"></i>
+                                Download Resume (.txt)
+                            </a>
+                            <button class="btn btn-outline-success" onclick="copyToClipboard('resume')">
+                                <i class="fas fa-copy me-2"></i>
+                                Copy to Clipboard
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Cover Letter -->
+            <div class="col-md-6 mb-4">
+                <div class="card shadow-sm h-100">
+                    <div class="card-header bg-info text-white">
+                        <h5 class="mb-0">
+                            <i class="fas fa-envelope me-2"></i>
+                            Cover Letter
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="document-preview mb-3">
+                            <textarea class="form-control" rows="10" readonly>{{ cover_letter_text[:500] }}{% if cover_letter_text|length > 500 %}...{% endif %}</textarea>
+                        </div>
+                        <div class="d-grid gap-2">
+                            <a href="/download/{{ folder_name }}/cover_letter.txt" class="btn btn-info">
+                                <i class="fas fa-download me-2"></i>
+                                Download Cover Letter (.txt)
+                            </a>
+                            <button class="btn btn-outline-info" onclick="copyToClipboard('cover_letter')">
+                                <i class="fas fa-copy me-2"></i>
+                                Copy to Clipboard
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Additional Information -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-secondary text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-info-circle me-2"></i>
+                    Additional Information
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    {% if vacancy_info.technologies %}
+                    <div class="col-md-6 mb-3">
+                        <h6><i class="fas fa-code me-2"></i>Technologies</h6>
+                        <p class="text-muted">{{ vacancy_info.technologies }}</p>
+                    </div>
+                    {% endif %}
+                    {% if vacancy_info.skills %}
+                    <div class="col-md-6 mb-3">
+                        <h6><i class="fas fa-star me-2"></i>Skills</h6>
+                        <p class="text-muted">{{ vacancy_info.skills }}</p>
+                    </div>
+                    {% endif %}
+                    {% if vacancy_info.experience_level %}
+                    <div class="col-md-6 mb-3">
+                        <h6><i class="fas fa-chart-line me-2"></i>Experience Level</h6>
+                        <p class="text-muted">{{ vacancy_info.experience_level }}</p>
+                    </div>
+                    {% endif %}
+                    {% if vacancy_info.domain %}
+                    <div class="col-md-6 mb-3">
+                        <h6><i class="fas fa-industry me-2"></i>Domain</h6>
+                        <p class="text-muted">{{ vacancy_info.domain }}</p>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="mt-3">
+                    <a href="/download/{{ folder_name }}/vacancy_info.json" class="btn btn-outline-secondary">
+                        <i class="fas fa-download me-2"></i>
+                        Download Vacancy Info (.json)
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="d-flex justify-content-between">
+            <a href="/vacancies" class="btn btn-outline-primary">
+                <i class="fas fa-arrow-left me-2"></i>
+                Generate for Another Vacancy
+            </a>
+            <a href="/" class="btn btn-primary">
+                <i class="fas fa-home me-2"></i>
+                Start New Session
+            </a>
+        </div>
+
+        <!-- Hidden content for clipboard -->
+        <textarea id="resume-content" style="display: none;">{{ resume_text }}</textarea>
+        <textarea id="cover_letter-content" style="display: none;">{{ cover_letter_text }}</textarea>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function copyToClipboard(type) {
+    const content = document.getElementById(type + '-content').value;
+    navigator.clipboard.writeText(content).then(function() {
+        showAlert(`${type.replace('_', ' ')} copied to clipboard!`, 'success');
+    }, function(err) {
+        showAlert('Failed to copy to clipboard', 'danger');
+    });
+}
+</script>
+{% endblock %}
