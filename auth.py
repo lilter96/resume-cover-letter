@@ -186,6 +186,71 @@ class UserManager:
                 "user": self.user_to_dict(user)
             }
     
+    def register_or_login_telegram_user(self, db: Session, telegram_user_data: Dict) -> Dict:
+        """Register or login user via Telegram Login Widget."""
+        telegram_id = telegram_user_data.get('telegram_id')
+        name = telegram_user_data.get('name')
+        email = telegram_user_data.get('email')  # synthetic: {id}@telegram.user
+        photo_url = telegram_user_data.get('photo_url')
+        telegram_username = telegram_user_data.get('telegram_username')
+
+        if not telegram_id:
+            return {"success": False, "message": "Invalid Telegram user data"}
+
+        existing_user = db.query(User).filter(
+            (User.telegram_id == telegram_id) | (User.email == email)
+        ).first()
+
+        if existing_user:
+            if not existing_user.telegram_id:
+                existing_user.telegram_id = telegram_id
+                existing_user.auth_provider = 'telegram'
+            if telegram_username:
+                existing_user.telegram_username = telegram_username
+            if photo_url and not existing_user.profile_picture:
+                existing_user.profile_picture = photo_url
+            existing_user.last_login = datetime.utcnow()
+            db.commit()
+
+            token = self.auth.create_access_token(existing_user.id)
+            return {
+                "success": True,
+                "message": "Telegram login successful",
+                "token": token,
+                "user": self.user_to_dict(existing_user)
+            }
+
+        user = User(
+            email=email,
+            name=name,
+            telegram_id=telegram_id,
+            telegram_username=telegram_username,
+            profile_picture=photo_url,
+            auth_provider='telegram',
+            is_verified=True,
+            credits=3
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
+        credit_transaction = CreditTransaction(
+            user_id=user.id,
+            transaction_type="bonus",
+            credits_amount=3,
+            description="Welcome bonus - 3 free generations (Telegram signup)"
+        )
+        db.add(credit_transaction)
+        db.commit()
+
+        token = self.auth.create_access_token(user.id)
+        return {
+            "success": True,
+            "message": "Telegram account registered successfully",
+            "token": token,
+            "user": self.user_to_dict(user)
+        }
+
     def login_user(self, db: Session, email: str, password: str) -> Dict:
         """Login user."""
         user = db.query(User).filter(User.email == email).first()

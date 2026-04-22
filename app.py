@@ -36,6 +36,7 @@ from scripts.hh import HeadHunterAPI
 from crypto_payment import CryptoPaymentService
 from stripe_payment import StripePaymentService
 from google_oauth import get_google_oauth_service
+from telegram_oauth import get_telegram_oauth_service
 from metrics import metrics_collector, track_llm_usage, track_generation_metrics, track_payment_metrics, track_credit_metrics
 from middleware import setup_middleware
 
@@ -69,6 +70,7 @@ user_manager = UserManager(auth_manager)
 crypto_service = CryptoPaymentService()
 stripe_service = None
 google_oauth_service = None
+telegram_oauth_service = None
 generator = None
 
 # Pydantic models
@@ -119,7 +121,7 @@ setup_middleware(app)
 @app.on_event("startup")
 async def startup_event():
     """Initialize services on startup."""
-    global generator, stripe_service, google_oauth_service
+    global generator, stripe_service, google_oauth_service, telegram_oauth_service
     
     try:
         # Create database tables
@@ -148,6 +150,18 @@ async def startup_event():
             print(f"⚠️ Google OAuth service error: {e}")
             print("💡 Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET to enable Google login")
         
+        # Initialize Telegram OAuth service (only if credentials are provided)
+        try:
+            telegram_oauth_service = get_telegram_oauth_service()
+            if telegram_oauth_service:
+                print("✅ Telegram OAuth service initialized")
+            else:
+                print("⚠️ Telegram OAuth service not initialized")
+                print("💡 Set TELEGRAM_BOT_TOKEN and TELEGRAM_BOT_USERNAME to enable Telegram login")
+        except Exception as e:
+            print(f"⚠️ Telegram OAuth service error: {e}")
+            print("💡 Set TELEGRAM_BOT_TOKEN and TELEGRAM_BOT_USERNAME to enable Telegram login")
+
         # Initialize metrics collection
         print("📊 Initializing metrics collection...")
         
@@ -186,7 +200,10 @@ async def home(request: Request, db: Session = Depends(get_db)):
 @app.get("/register", response_class=HTMLResponse)
 async def register_page(request: Request):
     """Registration page."""
-    return templates.TemplateResponse("register.html", {"request": request})
+    return templates.TemplateResponse("register.html", {
+        "request": request,
+        "telegram_bot_username": telegram_oauth_service.bot_username if telegram_oauth_service else None
+    })
 
 @app.post("/api/register")
 async def register(user_data: UserRegister, db: Session = Depends(get_db)):
@@ -206,7 +223,10 @@ async def register(user_data: UserRegister, db: Session = Depends(get_db)):
 @app.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request):
     """Login page."""
-    return templates.TemplateResponse("login.html", {"request": request})
+    return templates.TemplateResponse("login.html", {
+        "request": request,
+        "telegram_bot_username": telegram_oauth_service.bot_username if telegram_oauth_service else None
+    })
 
 @app.post("/api/login")
 async def login(user_data: UserLogin, db: Session = Depends(get_db)):
@@ -338,6 +358,44 @@ async def google_auth_status():
     return JSONResponse({
         "available": google_oauth_service is not None,
         "configured": google_oauth_service.is_configured() if google_oauth_service else False
+    })
+
+# Telegram OAuth endpoints
+@app.get("/auth/telegram/callback")
+async def telegram_callback(request: Request, db: Session = Depends(get_db)):
+    """Handle Telegram Login Widget callback (receives auth data as query params)."""
+    if not telegram_oauth_service:
+        raise HTTPException(status_code=503, detail="Telegram OAuth not configured")
+
+    params = dict(request.query_params)
+
+    if not telegram_oauth_service.verify_auth(params):
+        raise HTTPException(status_code=400, detail="Telegram auth verification failed")
+
+    user_data = telegram_oauth_service.extract_user_data(params)
+    result = user_manager.register_or_login_telegram_user(db, user_data)
+
+    if not result["success"]:
+        raise HTTPException(status_code=400, detail=result["message"])
+
+    response = HTMLResponse("""
+    <html>
+        <head>
+            <title>Login Successful</title>
+            <script>window.location.href = "/dashboard";</script>
+        </head>
+        <body><p>Login successful! Redirecting...</p></body>
+    </html>
+    """)
+    response.set_cookie("access_token", result["token"], httponly=True, max_age=60*60*24*7, path="/")
+    return response
+
+@app.get("/api/auth/telegram/status")
+async def telegram_auth_status():
+    """Check if Telegram OAuth is available."""
+    return JSONResponse({
+        "available": telegram_oauth_service is not None,
+        "bot_username": telegram_oauth_service.bot_username if telegram_oauth_service else None
     })
 
 @app.get("/dashboard", response_class=HTMLResponse)

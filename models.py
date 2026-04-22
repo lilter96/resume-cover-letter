@@ -34,8 +34,10 @@ class User(Base):
     
     # OAuth fields
     google_id = Column(String, unique=True, nullable=True)  # Google OAuth ID
+    telegram_id = Column(String, unique=True, nullable=True)  # Telegram user ID
+    telegram_username = Column(String, nullable=True)  # Telegram @username
     profile_picture = Column(String, nullable=True)  # Profile picture URL
-    auth_provider = Column(String, default='local')  # 'local', 'google'
+    auth_provider = Column(String, default='local')  # 'local', 'google', 'telegram'
     
     # Credits system
     credits = Column(Integer, default=3)  # Free credits for new users
